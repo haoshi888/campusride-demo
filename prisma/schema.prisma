@@ -1,0 +1,204 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model School {
+  id           String   @id @default(cuid())
+  name         String   @unique
+  city         String
+  emailDomains String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  users User[]
+  trips Trip[]
+}
+
+model User {
+  id               String   @id @default(cuid())
+  name             String
+  avatar           String?
+  phone            String   @unique
+  phoneVerified    Boolean  @default(false)
+  schoolId         String
+  schoolVerified   Boolean  @default(false)
+  email            String?
+  emailVerified    Boolean  @default(false)
+  rating           Float    @default(5)
+  tripCount        Int      @default(0)
+  punctualityRate  Int      @default(100)
+  isAdmin          Boolean  @default(false)
+  isDisabled       Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  school            School             @relation(fields: [schoolId], references: [id])
+  createdTrips      Trip[]             @relation("TripCreator")
+  memberships       TripMember[]
+  messages          Message[]
+  paymentCommitments PaymentCommitment[]
+  reviewsWritten    Review[]           @relation("Reviewer")
+  reviewsReceived   Review[]           @relation("Reviewee")
+  reportsCreated    Report[]           @relation("Reporter")
+  reportsReceived   Report[]           @relation("ReportedUser")
+  notifications     Notification[]
+  blocksInitiated   Block[]            @relation("Blocker")
+  blocksReceived    Block[]            @relation("Blocked")
+}
+
+model Trip {
+  id                               String   @id @default(cuid())
+  creatorId                        String
+  schoolId                         String
+  origin                           String
+  destination                      String
+  departureDate                    DateTime
+  departureTime                    String
+  departureAt                      DateTime
+  timeFlexibilityMinutes           Int      @default(15)
+  currentMembers                   Int      @default(1)
+  minMembers                       Int      @default(2)
+  maxMembers                       Int      @default(3)
+  luggageCount                     Int      @default(0)
+  luggageSizes                     String   @default("[]")
+  hasOversizedLuggage              Boolean  @default(false)
+  matchingScope                    String   @default("SCHOOL")
+  deadlineMinutesBeforeDeparture   Int      @default(60)
+  status                           String   @default("PUBLISHED")
+  estimatedTotalFareMin             Int?
+  estimatedTotalFareMax             Int?
+  hiddenByAdmin                    Boolean  @default(false)
+  createdAt                        DateTime @default(now())
+  updatedAt                        DateTime @updatedAt
+
+  creator           User            @relation("TripCreator", fields: [creatorId], references: [id])
+  school            School          @relation(fields: [schoolId], references: [id])
+  members           TripMember[]
+  conversation      Conversation?
+  paymentCommitments PaymentCommitment[]
+  reviews           Review[]
+  reports           Report[]
+  notifications     Notification[]
+}
+
+model TripMember {
+  id             String   @id @default(cuid())
+  tripId         String
+  userId         String
+  role           String   @default("MEMBER")
+  luggageCount   Int      @default(0)
+  luggageSizes   String   @default("[]")
+  paymentStatus  String   @default("PENDING")
+  memberStatus   String   @default("ACTIVE")
+  joinedAt       DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([tripId, userId])
+  @@index([userId, memberStatus])
+}
+
+model Conversation {
+  id             String   @id @default(cuid())
+  tripId         String?  @unique
+  type           String   @default("TRIP_GROUP")
+  participantIds String   @default("[]")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  trip     Trip?     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  messages Message[]
+}
+
+model Message {
+  id             String   @id @default(cuid())
+  conversationId String
+  senderId       String
+  content        String
+  createdAt      DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User         @relation(fields: [senderId], references: [id])
+}
+
+model PaymentCommitment {
+  id        String   @id @default(cuid())
+  tripId    String
+  userId    String
+  amount    Int
+  status    String   @default("PENDING")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([tripId, userId])
+}
+
+model Review {
+  id         String   @id @default(cuid())
+  tripId     String
+  reviewerId String
+  revieweeId String
+  rating     Int
+  tags       String   @default("[]")
+  comment    String?
+  createdAt  DateTime @default(now())
+
+  trip     Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  reviewer User @relation("Reviewer", fields: [reviewerId], references: [id])
+  reviewee User @relation("Reviewee", fields: [revieweeId], references: [id])
+
+  @@unique([tripId, reviewerId, revieweeId])
+}
+
+model Report {
+  id             String   @id @default(cuid())
+  reporterId     String
+  reportedUserId String?
+  tripId         String?
+  type           String
+  description    String
+  status         String   @default("PENDING")
+  adminNote      String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  reporter     User  @relation("Reporter", fields: [reporterId], references: [id])
+  reportedUser User? @relation("ReportedUser", fields: [reportedUserId], references: [id])
+  trip         Trip? @relation(fields: [tripId], references: [id], onDelete: SetNull)
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  tripId    String?
+  type      String
+  title     String
+  content   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trip Trip? @relation(fields: [tripId], references: [id], onDelete: SetNull)
+}
+
+model Block {
+  id        String   @id @default(cuid())
+  blockerId String
+  blockedId String
+  createdAt DateTime @default(now())
+
+  blocker User @relation("Blocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked User @relation("Blocked", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@unique([blockerId, blockedId])
+}

@@ -1,0 +1,15 @@
+node_modules
+.next
+out
+.env
+.env.local
+*.log
+prisma/dev.db
+prisma/dev.db-journal
+.runtime
+.home
+.pnpm
+.pnpm-store
+tsconfig.tsbuildinfo
+
+*.zip
