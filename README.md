@@ -274,3 +274,5 @@ scripts/
 - 群聊使用轮询刷新，不是 WebSocket。
 - 移动端与桌面端均支持，但未做原生 App。
 - 管理员权限仅通过 Seed 用户的 `isAdmin` 字段模拟。
+
+<!-- deployment trigger: 2026-09-12 -->
